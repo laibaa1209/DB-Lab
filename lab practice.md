@@ -244,4 +244,7 @@ from dual;
 select first_name, hire_date
 from employees
 where 'Wednesday' = to_char(hire_date, 'Day');
+
+delete from students where id in(4);
+--diff between trunctate and delete
 ```
