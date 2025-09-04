@@ -184,10 +184,64 @@ from dual;
 --to char converts numeric and date values to string values.
 select to_char(sysdate, 'DD-MM-YY')
 from dual;
+```
 
+# Lab 3:
+
+```sql
+--table->schema
+--rows->tuple
+--columns->attributes
+--contraints->2 types: table level and column level
+create table students(
+id int primary key ,
+std_name varchar(3),
+email varchar(20),
+age int ,
+check(age>=18) --constraint on age column.
+);
+
+select * from students;
+
+--forgot to add 2 or 3 columns. then how to add 2 columns or more than 2 cols together? means you are performing alteration in the table which is complex.
+alter table students add salary int;
+
+alter table students add (city varchar(20) default 'Karachi', dept_id int);
+select * from students;
+
+--forgot to keep email unique and not null
+alter table students add CONSTRAINT unique_email unique(email);
+alter table students modify(std_name varchar(20) not null, email varchar(300) not null);
+
+--to add multiple constraints
+alter table students add ( Constraint 
+check_age check(age between 18 and 30),
+constraint unqiue_email unique(email)
+);
+
+create table departments(
+id int primary key,
+dept_name varchar(20) not null
+);
+
+select * from departments;
+insert into DEPARTMENTS(id, dept_name) values(3, 'AI');
+select * from departments;
+truncate table departments;
+
+SELECT * FROM STUDENTS;
+alter table students drop column dept_id;
+
+alter table students add(dept_id int, foreign key(dept_id), refrences departments(id));
+insert into students(id, std_name, std_email, age, city, salary, dept_id)
+values
+(4, 'Bilal', 'bt1209@gmail.com',21, 'Lahore', 300000, 2);
+--alter table students rename column email to std_email;
+SELECT * FROM STUDENTS; ```
 select to_char(sysdate, 'month')
 from dual;
-```
+
 select first_name, hire_date
 from employees
 where 'Wednesday' = to_char(hire_date, 'Day');
+```
