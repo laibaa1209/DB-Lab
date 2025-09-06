@@ -237,7 +237,7 @@ insert into students(id, std_name, std_email, age, city, salary, dept_id)
 values
 (4, 'Bilal', 'bt1209@gmail.com',21, 'Lahore', 300000, 2);
 --alter table students rename column email to std_email;
-SELECT * FROM STUDENTS; ```
+SELECT * FROM STUDENTS; 
 select to_char(sysdate, 'month')
 from dual;
 
