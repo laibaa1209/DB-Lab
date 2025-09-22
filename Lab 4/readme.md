@@ -1,3 +1,4 @@
+```sql
 -- Q1: Students per department
 SELECT department_id, COUNT(*) AS student_count
 FROM students GROUP BY department_id;
@@ -101,4 +102,4 @@ HAVING COUNT(e.course_id) > 3
 INSERT INTO Unassigned_Faculty
 SELECT f.* FROM faculty f
 WHERE f.faculty_id NOT IN (SELECT DISTINCT faculty_id FROM courses);
-
+```
