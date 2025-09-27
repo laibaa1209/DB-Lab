@@ -1,0 +1,299 @@
+Question 02:
+DATABASE DESIGN LANGUAGE
+
+-- Members table
+CREATE TABLE Members (
+    MemberID     INT        PRIMARY KEY,
+    Name         VARCHAR(100) NOT NULL,
+    Email        VARCHAR(255) NOT NULL UNIQUE,
+    JoinDate     DATE       NOT NULL DEFAULT CURRENT_DATE,
+    CHECK (Email LIKE '%@%')            -- simple email-format check
+);
+
+-- Books table
+CREATE TABLE Books (
+    BookID          INT        PRIMARY KEY,
+    Title           VARCHAR(255) NOT NULL,
+    Author          VARCHAR(150) NOT NULL,
+    CopiesAvailable INT        NOT NULL CHECK (CopiesAvailable >= 0)
+);
+
+-- IssuedBooks table
+CREATE TABLE IssuedBooks (
+    IssueID    SERIAL       PRIMARY KEY,            -- auto-incrementing issue id
+    MemberID   INT          NOT NULL,
+    BookID     INT          NOT NULL,
+    IssueDate  DATE         NOT NULL DEFAULT CURRENT_DATE,
+    ReturnDate DATE         NULL,
+    FOREIGN KEY (MemberID) REFERENCES Members(MemberID),
+    FOREIGN KEY (BookID)   REFERENCES Books(BookID),
+    -- no duplicate issuance of same book to same member on same day:
+    UNIQUE (MemberID, BookID, IssueDate),
+    CHECK (ReturnDate IS NULL OR ReturnDate >= IssueDate)
+);
+
+2. DATABASE CATALOG DESIGN
+
+CREATE TABLE DB_Catalog_Tables (
+    TableName   VARCHAR(100) PRIMARY KEY,
+    Description TEXT
+);
+
+CREATE TABLE DB_Catalog_Columns (
+    TableName    VARCHAR(100),
+    ColumnName   VARCHAR(100),
+    DataType     VARCHAR(100),
+    IsNullable   BOOLEAN,
+    ColumnNotes  TEXT,
+    PRIMARY KEY (TableName, ColumnName)
+);
+
+-- Insert catalog entries (examples)
+INSERT INTO DB_Catalog_Tables VALUES
+('Members', 'Library members'),
+('Books', 'Library books and available copies'),
+('IssuedBooks', 'Records of issued books');
+
+INSERT INTO DB_Catalog_Columns VALUES
+('Members','MemberID','INT',FALSE,'Primary Key'),
+('Members','Name','VARCHAR(100)',FALSE,'Member full name'),
+('Members','Email','VARCHAR(255)',FALSE,'Unique email'),
+('Members','JoinDate','DATE',FALSE,'Default CURRENT_DATE'),
+('Books','BookID','INT',FALSE,'Primary Key'),
+('Books','Title','VARCHAR(255)',FALSE,'Book title'),
+('Books','Author','VARCHAR(150)',FALSE,'Author name'),
+('Books','CopiesAvailable','INT',FALSE,'Must be >= 0'),
+('IssuedBooks','IssueID','SERIAL',FALSE,'Primary Key'),
+('IssuedBooks','MemberID','INT',FALSE,'FK -> Members'),
+('IssuedBooks','BookID','INT',FALSE,'FK -> Books'),
+('IssuedBooks','IssueDate','DATE',FALSE,'Default CURRENT_DATE'),
+('IssuedBooks','ReturnDate','12-Dec-202',TRUE,'NULL if not yet returned');
+
+3. DML Queries for Daily Operations
+
+-- Members
+INSERT INTO Members (MemberID, Name, Email) VALUES
+(201, 'Ayesha Khan', 'ayesha.k@example.com'),
+(202, 'Bilal Ahmed', 'bilal.a@example.com'),
+(203, 'Sara Malik', 'sara.m@example.com');
+
+-- Books
+INSERT INTO Books (BookID, Title, Author, CopiesAvailable) VALUES
+(101, 'Introduction to Databases', 'Korth', 3),
+(102, 'Data Structures in C', 'Goodrich', 2),
+(103, 'Discrete Mathematics', 'Rosen', 4);
+
+-- 1) Insert issuance record
+INSERT INTO IssuedBooks (MemberID, BookID)
+VALUES (201, 101);    -- Issue book 101 to member 201 (IssueDate defaults to today)
+
+-- 2) Decrement available copies (only if copies > 0)
+UPDATE Books
+SET CopiesAvailable = CopiesAvailable - 1
+WHERE BookID = 101 AND CopiesAvailable > 0;
+
+SELECT m.MemberID, m.Name, b.BookID, b.Title, ib.IssueDate, ib.ReturnDate
+FROM Members m
+LEFT JOIN IssuedBooks ib ON m.MemberID = ib.MemberID
+LEFT JOIN Books b ON ib.BookID = b.BookID
+ORDER BY m.MemberID;
+
+4. Constraint Violation Demonstration
+
+-- Trying to insert duplicate MemberID = 201 which already exists
+INSERT INTO Members (MemberID, Name, Email) VALUES
+(201, 'Duplicate Person', 'dup@example.com');
+
+-- Member 9999 does not exist, so this will fail (FK violation)
+INSERT INTO IssuedBooks (MemberID, BookID)
+VALUES (9999, 101);
+
+-- This attempts to set negative copies and violates CHECK (CopiesAvailable >= 0)
+UPDATE Books
+SET CopiesAvailable = -5
+WHERE BookID = 102;
+
+5. Two suggested improvements (future enhancements)
+
+Add transaction-safe issuance logic & triggers:
+
+Use a trigger or stored procedure that checks CopiesAvailable > 0, decrements it atomically, and rolls back if something fails. This prevents race conditions.
+
+Add fine/overdue system and audit trail:
+Store loan limits, calculate fines for overdue books, and keep an AuditLog table for changes (issue/return/updates) for accountability.
+
+6. Nested queries (subqueries)
+a) Find Members with No Issued Books
+
+SELECT MemberID, Name
+FROM Members m
+WHERE NOT EXISTS (
+    SELECT 1 FROM IssuedBooks ib WHERE ib.MemberID = m.MemberID
+);
+
+b) Find Books with Highest Copies
+
+SELECT *
+FROM Books
+WHERE CopiesAvailable = (
+    SELECT MAX(CopiesAvailable) FROM Books
+);
+
+c) Find the Most Active Member (most issues)
+
+SELECT MemberID, Name, IssueCount FROM (
+    SELECT ib.MemberID, COUNT(*) AS IssueCount
+    FROM IssuedBooks ib
+    GROUP BY ib.MemberID
+) t
+JOIN Members m ON t.MemberID = m.MemberID
+ORDER BY IssueCount DESC
+LIMIT 1;
+
+d) Find the Books Not Issued (never issued)
+SELECT b.BookID, b.Title
+FROM Books b
+WHERE NOT EXISTS (
+    SELECT 1 FROM IssuedBooks ib WHERE ib.BookID = b.BookID
+);
+
+e) Members with Books Overdue
+(Books overdue if ReturnDate IS NULL AND IssueDate < CURRENT_DATE - 30)
+
+SELECT DISTINCT m.MemberID, m.Name, ib.IssueDate
+FROM Members m
+JOIN IssuedBooks ib ON m.MemberID = ib.MemberID
+WHERE ib.ReturnDate IS NULL
+  AND ib.IssueDate < (CURRENT_DATE - INTERVAL '30 days');
+
+
+Question 03:
+DDL (Table Creation)
+-- Patient Table with constraints
+CREATE TABLE Patient (
+    Patient_ID    INT PRIMARY KEY,
+    Name          VARCHAR(100) NOT NULL,
+    Gender        CHAR(1) CHECK (Gender IN ('M','F')),
+    DOB           DATE,
+    Email         VARCHAR(150) UNIQUE,
+    Phone         VARCHAR(20),
+    Address       VARCHAR(255),
+    Username      VARCHAR(50),
+    Password      VARCHAR(50)
+);
+
+-- Doctor Table
+CREATE TABLE Doctor (
+    Doctor_ID     INT PRIMARY KEY,
+    Name          VARCHAR(100) NOT NULL,
+    Specialization VARCHAR(100),
+    Username      VARCHAR(50),
+    Password      VARCHAR(50)
+);
+
+-- Appointment Table
+CREATE TABLE Appointment (
+    Appointment_ID   INT PRIMARY KEY,
+    Appointment_Date DATE,
+    Appointment_Time TIME,
+    Status           VARCHAR(50),
+    Clinic_Number    INT,
+    Patient_ID       INT,
+    Doctor_ID        INT,
+    FOREIGN KEY (Patient_ID) REFERENCES Patient(Patient_ID),
+    FOREIGN KEY (Doctor_ID) REFERENCES Doctor(Doctor_ID)
+);
+
+-- Prescription Table
+CREATE TABLE Prescription (
+    Prescription_ID   INT PRIMARY KEY,
+    Date              DATE,
+    Doctor_Advice     TEXT,
+    Followup_Required BOOLEAN,
+    Patient_ID        INT,
+    Doctor_ID         INT,
+    FOREIGN KEY (Patient_ID) REFERENCES Patient(Patient_ID),
+    FOREIGN KEY (Doctor_ID) REFERENCES Doctor(Doctor_ID)
+);
+
+-- Invoice Table
+CREATE TABLE Invoice (
+    Invoice_ID      INT PRIMARY KEY,
+    Invoice_Date    DATE,
+    Amount          DECIMAL(10,2),
+    Payment_Status  VARCHAR(50),
+    Payment_Method  VARCHAR(50),
+    Patient_ID      INT,
+    FOREIGN KEY (Patient_ID) REFERENCES Patient(Patient_ID)
+);
+
+-- Tests Table
+CREATE TABLE Tests (
+    Test_ID     INT PRIMARY KEY,
+    Blood_Test  VARCHAR(50),
+    XRay        VARCHAR(50),
+    MRI         VARCHAR(50),
+    CT_Scan     VARCHAR(50)
+);
+
+2. DML Queries
+-- a) Update phone and email of a patient
+UPDATE Patient
+SET Phone = '03001234567', Email = 'newemail@example.com'
+WHERE Patient_ID = 1;
+
+-- b) Update invoice status
+UPDATE Invoice
+SET Payment_Status = 'Paid'
+WHERE Invoice_ID = 10 AND Payment_Status = 'Unpaid';
+
+-- c) Delete cancelled appointments
+DELETE FROM Appointment
+WHERE Status = 'Cancelled';
+
+-- d) Delete refunded invoice
+DELETE FROM Invoice
+WHERE Patient_ID = 5 AND Payment_Status = 'Refunded';
+
+-- e) Select booked appointments
+SELECT * FROM Appointment
+WHERE Status = 'Booked';
+
+-- f) Select unpaid invoices
+SELECT * FROM Invoice
+WHERE Payment_Status = 'Unpaid';
+
+-- g) Select only blood tests
+SELECT Test_ID, Blood_Test FROM Tests
+WHERE Blood_Test IS NOT NULL;
+
+-- h) Select prescriptions of specific date
+SELECT * FROM Prescription
+WHERE Date = '2025-09-02';
+
+3. Advanced SQL Queries
+-- a) Patients with their doctors booked
+SELECT P.Name AS PatientName, D.Name AS DoctorName, A.Appointment_Date
+FROM Appointment A
+JOIN Patient P ON A.Patient_ID = P.Patient_ID
+JOIN Doctor D ON A.Doctor_ID = D.Doctor_ID
+WHERE A.Status = 'Booked';
+
+-- b) Lab tests of patients with doctors
+SELECT T.Test_ID, P.Name AS PatientName, D.Name AS DoctorName
+FROM Tests T
+JOIN Patient P ON T.Test_ID = P.Patient_ID
+JOIN Doctor D ON P.Patient_ID = D.Doctor_ID;   -- (depends on relation; assuming doctor requested test)
+
+-- c) Prescriptions with medicines only for Ali Khan
+SELECT PR.Prescription_ID, PR.Doctor_Advice
+FROM Prescription PR
+JOIN Patient P ON PR.Patient_ID = P.Patient_ID
+WHERE P.Name = 'Ali Khan';
+
+-- d) Prescriptions with doctors where follow-up required
+SELECT PR.Prescription_ID, P.Name AS PatientName, D.Name AS DoctorName, PR.Doctor_Advice
+FROM Prescription PR
+JOIN Patient P ON PR.Patient_ID = P.Patient_ID
+JOIN Doctor D ON PR.Doctor_ID = D.Doctor_ID
+WHERE PR.Followup_Required = TRUE;
