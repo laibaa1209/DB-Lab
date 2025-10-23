@@ -248,3 +248,99 @@ where 'Wednesday' = to_char(hire_date, 'Day');
 delete from students where id in(4);
 --diff between trunctate and delete
 ```
+```sql
+## Procedural language
+-- to run plsql we use this command
+set serveroutput on;
+
+--3 phases of plsql
+--declrataion->optional
+--execution
+--exceptipn->optional
+declare --variables creation in declaration phase
+sec_name varchar(20) := 'SEC-5A'; -- := assignment opeartor
+course_name varchar(20) := 'Database system Lab';
+--declaration phase complete
+
+Begin
+--execution phase(v. imp), mandatory phase between begin and end.
+-- server output allows to use its function thats why we did set server output on
+DBMS_OUTPUT.PUT_LINE('WELCOME ' || sec_name || ' to the' || course_name);
+End;
+/
+-- this is called PL block->prog block
+-- this tells to stop the upper block
+
+
+--starting of another block
+declare
+a int := 10;
+b int := 10;
+c int;
+f real;
+begin
+c := a+b;
+DBMS_OUTPUT.put_line('Value of c is ' || c);
+f := 70.0/3.0;
+DBMS_OUTPUT.put_line('Value of f is ' || f);
+End;
+/
+
+--local and global variables
+Declare
+-- global variables in declare body
+    num1 number := 21;
+    num2 number := 22;
+
+    Begin
+    DBMS_OUTPUT.put_line('Outter var num1 ' || num1);
+    DBMS_OUTPUT.put_line('Outter var num2 ' || num2);
+        Declare
+        --variables between begin and end body mean local variable
+            n1 int := 45;
+            n2 int := 12;
+            Begin
+                DBMS_OUTPUT.put_line('local variables n1 and n2 are ' || n1 || ' ' || n2);
+            end;
+    End;
+/
+
+Declare
+e_name varchar(20);
+begin
+--execution and e phase both here
+select first_name into e_name from employees where employee_id = 101;
+DBMS_OUTPUT.put_line('Employee name is ' || e_name);
+Exception
+WHEN
+NO_DATA_FOUND THEN
+DBMS_OUTPUT.put_line('no employee found');
+end;
+/
+
+declare
+begin
+update employees set salary = salary*1.10 where
+department_id = (SELECT department_id FROM departments WHERE department_name = 'Adminstration');
+DBMS_OUTPUT.PUT_LINE('salary updated successfully');
+end;
+/
+
+--join and USE OF %TYPE FOR ASSIGNING DATATYPE
+declare
+e_id EMPLOYEES.EMPLOYEE_ID%TYPE; --what if we change the data type later then we would have to speicfy to get it but ttype solves this problem by returning whatever the type of col is
+e_name EMPLOYEES.first_name%TYPE; --first name data type get and assign it to e_id
+d_name departments.department_name%TYPE;
+begin
+select employee_id, first_name, department_name into e_id, e_name, d_name from employees
+inner join departments
+ON
+employees.department_id = departments.department_id where employee_id = 100;
+    dbms_output.put_line('EMPLOYEE ID: ' ||e_id);
+    dbms_output.put_line('EMPLOYEE FIRST NAME: ' ||e_name);
+    dbms_output.put_line('DEPARTMENT NAME: ' ||d_name);
+end;
+/
+
+--conditional statement
+```
