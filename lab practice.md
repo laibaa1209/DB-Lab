@@ -343,4 +343,28 @@ end;
 /
 
 --conditional statement
+--using switch cases
+declare 
+    e_id employees.Employee_id%type;
+    e_sal employees.salary%type;
+    e_did employees.department_id%type;
+    
+begin
+    select salary, DEPARTMENT_ID into e_sal, e_did FROM employees where EMPLOYEE_ID = e_id;
+    CASE e_did
+    when 90 then
+    UPDATE employees SET salary = e_sal + 100 where employee_id = e_id;
+        dbms_output.put_line('Salary updated: ' ||e_sal);
+    when 50 then
+    UPDATE employees SET salary = e_sal + 200 where employee_id = e_id;
+        dbms_output.put_line('Salary updated: ' ||e_sal);
+    when 40 then
+    UPDATE employees SET salary = e_sal + 300 where employee_id = e_id;
+        dbms_output.put_line('Salary updated: ' ||e_sal);
+    else
+        dbms_output.put_line('No such record');
+    end case;
+    
+end;
+/
 ```
