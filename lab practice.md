@@ -368,3 +368,37 @@ begin
 end;
 /
 ```
+# class activity, triggers:
+```sql
+--create or replace trigger hr_audit_tx
+--after ddl on schema
+--begin
+--insert into schema_audit values (sysdate,;
+
+
+create table delete_logs(
+student_id int,
+student_name varchar(20),
+h_pay int,
+y_pay int,
+inserted_by varchar(20),
+inserted_on date
+);
+
+create or replace trigger after_delete
+after delete on students for each row
+begin
+insert into delete_logs (student_id, student_name, h_pay, y_pay, inserted_by, inserted_on)
+values (:OLD.student_id, :OLD.student_name, :OLD.h_pay, :OLD.y_pay, SYS_CONTEXT('USERENV', 'SESSION_USER'), SYSDATE);
+end;
+/
+
+create or replace trigger prevent_student_table
+before drop on database
+begin
+IF ora_dict_obj_type = 'TABLE' and ora_dict_obj_name = 'students' then
+RAISE_APPLICATION_ERROR(-20001, 'Dropping the STUDENTS table is not allowed.');
+end if;
+end;
+/
+```
