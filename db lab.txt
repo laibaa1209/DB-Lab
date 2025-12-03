@@ -1,0 +1,1776 @@
+--PL/SQL
+set serveroutput on;
+
+declare --vraibale declaration
+
+begin --main logic goes here
+
+exception --errors handled here
+
+end;
+/
+
+
+set serveroutput on;
+
+declare --global variable
+--static variables
+num constant number := 10;
+person_name varchar(10):= 'laiba';
+today_date DATE := sysdate;
+
+--var which will adjust and updates its types if the col types changes(using %type)
+sal employees.salary%type;
+
+begin --variables declared here are local
+
+    dbms_output.put_line('The number is:'||num);
+
+    select salary into sal from employees where employee_id=90;
+    dbms_output.put_line('The salaries is:'||sal);
+
+exception
+    -- If no record → NO_DATA_FOUND error
+    -- If multiple → TOO_MANY_ROWS error
+    when No_DATA_FOUND then 
+        dbms_output.put_line('no data exsists');
+    when others then
+    DBMS_OUTPUT.PUT_LINE(SQLERRM);
+end;
+/
+
+-- IF ELSE CONDITION
+declare
+    sal employees.salary%type;
+begin
+    select salary into sal from employees where employee_id = 100;
+    if sal > 20000 then
+        dbms_output.put_line('High salary');
+    elsif sal > 10000 then
+        dbms_output.put_line('medium salary');
+    else
+        dbms_output.put_line('low');
+    end if;
+end;
+/
+select* from departments;
+
+-- CASE CONDITION
+declare
+    deptID DEPARTMENTS.DEPARTMENT_ID%type;
+begin
+    select department_id into deptID from departments where department_id=20;
+    case deptID
+        when 10 then dbms_output.put_line('Adminstration');
+        when 20 then dbms_output.put_line('Marketing');
+        when 30 then dbms_output.put_line('Purchasing');
+        else dbms_output.put_line('Other');
+    end case;
+end;
+/
+
+--LOOPS
+--  FOR LOOPS:
+declare
+    i number;
+begin
+    for i in 1..10 loop
+        dbms_output.put_line(i);
+    end loop;
+end;
+/
+--while loop
+declare
+    i number:=1;
+begin
+    while i<11 loop
+        i:=i+1;
+    end loop;
+    dbms_output.put_line(i);
+end;
+/
+--loop exit
+declare
+    i number:=1;
+begin
+    loop
+        exit when i > 11;
+        i:=i+1;
+    end loop;
+    dbms_output.put_line(i);
+end;
+/
+
+--procedures in pl/sql
+--procedures donot return anything, they only perform actions:
+create or replace procedure rasie_salary(empID number) is
+begin
+    update employees set salary = salary + 1000 where employee_id = empID;
+end;
+/
+
+exec rasie_salary(100); -- this is calling the procedure
+
+--functions(functions returns a value)
+create or replace function yearly_salary(eid number)
+return number is sal number;
+begin
+    select salary into sal from employees where employee_id = eid;
+    
+    return sal*2;
+end;
+/
+
+select yearly_salary(100) from dual; --calling function, returns value in a temporaray table dual.
+
+--cursor thing
+--there are 2 types of cursor, impicit and explicit. 
+declare 
+    cursor c1 is
+        select first_name, salary from employees;
+        
+    rec c1%rowtype;
+begin
+    open c1;
+        loop 
+        fetch c1 into rec;
+        exit when c1%NOTFOUND;
+        
+        dbms_output.put_line(rec.first_name || ' = ' || rec.salary);
+    
+        end loop;
+    close c1;
+end;
+/
+
+--views:
+create or replace view high_paid as
+select first_name, salary from employees where salary > 5000
+select * from high_paid;
+--deleting from views
+DELETE FROM emp_viewWHERE employee_id = 200;
+--updatign views
+UPDATE emp_view SET salary = 9000 WHERE employee_id = 100;
+--inserting into it
+INSERT INTO emp_view (employee_id, first_name, salary) VALUES (300, 'Laiba', 5000);
+
+
+
+--procedures with in and out parameteres.
+CREATE OR REPLACE PROCEDURE get_salary(
+   eid IN NUMBER,
+   esal OUT NUMBER
+) IS
+BEGIN
+   SELECT salary INTO esal
+   FROM employees
+   WHERE employee_id = eid;
+END;
+/
+--calling of the function
+DECLARE
+   salary NUMBER;
+BEGIN
+   get_salary(100, salary);
+   DBMS_OUTPUT.PUT_LINE('Salary = ' || salary);
+END;
+/
+
+--used together
+CREATE OR REPLACE PROCEDURE add_bonus(
+   amount IN OUT NUMBER
+) IS
+BEGIN
+   amount := amount + 500;
+END;
+/
+DECLARE
+   val NUMBER := 2000;
+BEGIN
+   add_bonus(val);
+   DBMS_OUTPUT.PUT_LINE('New amount = ' || val);
+END;
+/
+--custom exceptions
+DECLARE
+   sal NUMBER;
+BEGIN
+   SELECT salary INTO sal
+   FROM employees
+   WHERE employee_id = 100;
+
+   IF sal < 1000 THEN
+      RAISE_APPLICATION_ERROR(-20001, 'Salary too low!');
+   END IF;
+END;
+/
+--named exceptions
+DECLARE
+   insufficient_sal EXCEPTION;
+   PRAGMA EXCEPTION_INIT(insufficient_sal, -20002);
+
+   sal NUMBER;
+BEGIN
+   SELECT salary INTO sal
+   FROM employees WHERE employee_id = 100;
+
+   IF sal < 5000 THEN
+      RAISE insufficient_sal;
+   END IF;
+
+EXCEPTION
+   WHEN insufficient_sal THEN
+      DBMS_OUTPUT.PUT_LINE('Custom: Salary too low');
+END;
+/
+--materialized view
+CREATE MATERIALIZED VIEW mv_high_salary
+BUILD IMMEDIATE
+REFRESH FAST
+START WITH SYSDATE
+NEXT SYSDATE + 1
+AS
+SELECT employee_id, first_name, salary
+FROM employees
+WHERE salary > 8000;
+
+
+--select and joins
+SET SERVEROUTPUT ON;
+
+DECLARE
+   e_id      employees.employee_id%TYPE := 100;
+   fname     employees.first_name%TYPE;
+   lname     employees.last_name%TYPE;
+   dname     departments.department_name%TYPE;
+BEGIN
+   SELECT e.first_name, e.last_name, d.department_name
+   INTO fname, lname, dname
+   FROM employees e
+   INNER JOIN departments d
+      ON e.department_id = d.department_id
+   WHERE e.employee_id = e_id;
+
+   DBMS_OUTPUT.PUT_LINE('Name: ' || fname || ' ' || lname);
+   DBMS_OUTPUT.PUT_LINE('Department: ' || dname);
+END;
+/
+--nested if
+IF dept_id = 90 THEN
+    IF salary > 20000 THEN
+        DBMS_OUTPUT.PUT_LINE('High salary in dept 90');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Low salary in dept 90');
+    END IF;
+
+ELSIF dept_id = 40 THEN
+    IF salary < 10000 THEN
+        DBMS_OUTPUT.PUT_LINE('Low salary in dept 40');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('High salary in dept 40');
+    END IF;
+
+ELSE
+    DBMS_OUTPUT.PUT_LINE('Other department');
+END IF;
+--searched cases(cases with multiple conditions)
+CASE
+    WHEN salary BETWEEN 20000 AND 25000 THEN
+        DBMS_OUTPUT.PUT_LINE('Salary Range: High');
+
+    WHEN salary BETWEEN 15000 AND 19999 THEN
+        DBMS_OUTPUT.PUT_LINE('Salary Range: Medium');
+
+    WHEN salary < 15000 THEN
+        DBMS_OUTPUT.PUT_LINE('Salary Range: Low');
+
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Invalid Salary');
+END CASE;
+--join and aggragate usually shows read only views
+CREATE OR REPLACE VIEW dept_emp_view AS
+SELECT e.first_name, d.department_name
+FROM employees e
+JOIN departments d
+   ON e.department_id = d.department_id;
+--inline tabled values functions
+CREATE OR REPLACE FUNCTION get_emps_by_dept(did NUMBER)
+RETURN EMP_TBL_TYPE PIPELINED
+AS
+BEGIN
+   FOR r IN (SELECT employee_id, first_name FROM employees
+             WHERE department_id = did) LOOP
+      PIPE ROW (EMP_OBJ_TYPE(r.employee_id, r.first_name));
+   END LOOP;
+END;
+/
+SELECT * FROM TABLE(get_emps_by_dept(80));
+
+--multi statement table valued functions
+CREATE OR REPLACE FUNCTION get_details
+RETURN EMP_TBL_TYPE
+IS
+   emp_list EMP_TBL_TYPE := EMP_TBL_TYPE();
+BEGIN
+   emp_list.EXTEND;
+
+   SELECT employee_id, first_name, last_name
+   INTO emp_list(1).employee_id,
+        emp_list(1).first_name,
+        emp_list(1).last_name
+   FROM employees
+   WHERE employee_id = 100;
+
+   RETURN emp_list;
+END;
+/
+--nested blocks
+DECLARE
+    a NUMBER := 10;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Outer a = ' || a);
+
+    DECLARE
+        a NUMBER := 20;
+        b NUMBER := 30;
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('Inner a = ' || a);
+        DBMS_OUTPUT.PUT_LINE('Inner b = ' || b);
+    END;
+
+    DBMS_OUTPUT.PUT_LINE('Outer a again = ' || a);
+END;
+/
+--object constructor
+CREATE OR REPLACE TYPE EMP_DETAILS_OBJ AS OBJECT(
+  employee_id     NUMBER,
+  first_name      VARCHAR2(50),
+  last_name       VARCHAR2(50)
+);
+EMP_DETAILS_OBJ(employee_id, first_name, last_name)
+--SOME HUGE QUESTION ON BULK COLLECT 
+DECLARE
+    TYPE emp_tab_type IS TABLE OF employees%ROWTYPE;
+    emp_list emp_tab_type;
+BEGIN
+    SELECT *
+    BULK COLLECT INTO emp_list
+    FROM employees
+    WHERE department_id = 80;
+
+    FOR i IN 1..emp_list.COUNT LOOP
+        DBMS_OUTPUT.PUT_LINE(emp_list(i).first_name || ' - ' || emp_list(i).salary);
+    END LOOP;
+END;
+/
+
+-- TRANSACTIONS:
+set transaction name 'sal_update';
+update employees set salary = 6000 where last_name = 'Banda';
+savepoint after_banda_sal;
+
+UPDATE employees SET salary = 12000 WHERE last_name = 'Greene';
+savepoint after_greene_sal;
+
+rollback to after_banda_sal; --undo changes done after_banda_sal
+
+UPDATE employees SET salary = 11000 WHERE last_name = 'Greene'; --new update
+rollback; --undo all the changes
+
+--implicit and explicit transactions(explicit transcations ur a supposed to tell to commit, have a rol back and save point).
+CREATE TABLE worker (
+    worker_id NUMBER PRIMARY KEY,
+    worker_name VARCHAR2(50),
+    salary NUMBER
+); --this uses implicit commits(auto commits).
+
+INSERT INTO worker VALUES (1, 'Sohail', 5000); --this needs a manual commit
+commit; --now the row is committed
+
+--ROW LOCKING(classic row lock bheaviour)
+UPDATE worker SET salary = 6000 WHERE worker_id = 1; -- i didnot commit, hence the row is locked and any update on salary will wait until this one's commited
+UPDATE worker SET salary = 7000 WHERE worker_id = 1; --this will hang/wait
+
+commit; --now first update is commited now second will work
+
+-- another example:
+SET TRANSACTION NAME 'test_transaction';
+INSERT INTO worker VALUES (2, 'Erum', 5500);
+SAVEPOINT sp1;
+
+UPDATE worker SET salary = 6000 WHERE worker_name = 'Erum';
+SAVEPOINT sp2;
+
+ROLLBACK TO sp1;
+
+commit;
+
+--setting autocommits on saves you the hassle for commiting again and again manually
+SET AUTOCOMMIT ON;
+INSERT INTO worker VALUES (3, 'FAST-NU', 5000);
+SET AUTOCOMMIT OFF; --back to manual transactions
+
+
+
+-- a full example on transaction
+SET TRANSACTION NAME 'order_txn';
+
+INSERT INTO customers (cust_id, cust_name, balance)
+VALUES (101, 'Laiba', 10000);
+
+SAVEPOINT customer_added;   -- SP1
+
+INSERT INTO orders (order_id, cust_id, amount)
+VALUES (5001, 101, 4000);
+
+SAVEPOINT order_added;      -- SP2
+
+UPDATE customers SET balance = balance - 4000 WHERE cust_id = 101;
+
+DECLARE
+    bal NUMBER;
+BEGIN
+    SELECT balance INTO bal
+    FROM customers
+    WHERE cust_id = 101;
+
+    IF bal < 0 THEN
+        ROLLBACK TO customer_added;   -- remove order
+        DBMS_OUTPUT.PUT_LINE('Order cancelled: insufficient balance');
+    ELSE
+        COMMIT;   -- successful
+        DBMS_OUTPUT.PUT_LINE('Order successful: balance updated');
+    END IF;
+END;
+/
+-- alter table:
+ALTER TABLE customers ADD phone VARCHAR2(20);
+ALTER TABLE customers MODIFY balance NUMBER(12);
+ALTER TABLE customers DROP COLUMN phone;
+
+--grant & revoke(dcl)
+GRANT SELECT, INSERT ON customers TO laiba;
+REVOKE INSERT ON customers FROM laiba;
+
+
+-- MONGODB
+// =======================================================================
+// COMPLETE MONGODB LAB-11 MASTER FILE (EVERYTHING + COMMENTS)
+// =======================================================================
+
+// -------------------------------
+// OVERVIEW OF MONGODB
+// -------------------------------
+// MongoDB is an open-source NoSQL document database.
+// Uses BSON (Binary JSON).
+// High performance, scalable, schema-less.
+// Stores data in Databases → Collections → Documents.
+
+
+// -------------------------------
+// TERMINOLOGY DIFFERENCES
+// -------------------------------
+// RDBMS Table     = MongoDB Collection
+// RDBMS Row       = MongoDB Document
+// RDBMS Column    = MongoDB Field
+// RDBMS Joins     = Embedded Documents
+
+
+// -------------------------------
+// INSTALLATION SUMMARY (Compass + Mongosh)
+// -------------------------------
+// Install MongoDB Community Server.
+// Install MongoDB Compass (GUI).
+// Install MongoDB Shell (mongosh).
+// Connect Compass → localhost.
+// Create DB → Create Collection → Insert Document.
+
+
+// -------------------------------
+// USING COMPASS (GUI)
+// -------------------------------
+// Sample JSON inserted in Compass:
+{
+  "title": "A tale of two cities",
+  "author": "Charles Dickens",
+  "genre": ["historical", "fiction"]
+}
+// Compass automatically adds "_id" if omitted.
+
+
+// =======================================================================
+// USING MONGOSH (FULL COMPLETE COMMANDS)
+// =======================================================================
+
+// -------------------------------
+// SHOW DATABASES
+// -------------------------------
+show dbs;
+
+// -------------------------------
+// SWITCH (OR CREATE) DATABASE
+// -------------------------------
+use bookstoredb; 
+// DB is created only when data is inserted.
+
+
+// -------------------------------
+// CREATE COLLECTION
+// -------------------------------
+db.createCollection("tables");
+
+
+// -------------------------------
+// INSERT ONE DOCUMENT
+// -------------------------------
+db.tables.insertOne({
+  title: "The Alchemist",
+  author: "Paulo Coelho"
+});
+
+
+// -------------------------------
+// INSERT MANY DOCUMENTS
+// -------------------------------
+db.tables.insertMany([
+  {
+    "title": "A tale of two cities",
+    "author": "Charles Dickens",
+    "genre":["historical", "fiction"]
+  },
+  {
+    "title": "The Alchemist",
+    "author": "Paulo Coelho",
+    "genre":["fantasy"]
+  },
+  {
+    "title": "Harry Potter and the Philosopher's Stone",
+    "author": "J. K. Rowling",
+    "genre": ["children fantasy"]
+  }
+]);
+
+
+// =======================================================================
+// BASIC FIND QUERIES (WHERE CLAUSE EQUIVALENT)
+// =======================================================================
+
+// Find ALL documents
+db.tables.find();
+
+// Equals (=)
+db.tables.find({ author: "Paulo Coelho" });
+
+// Less than (<)
+db.tables.find({ price: { $lt: 50 } });
+
+// Less than or equal (<=)
+db.tables.find({ likes: { $lte: 50 } });
+
+// Greater than (>)
+db.tables.find({ likes: { $gt: 50 } });
+
+// Greater or equal (>=)
+db.tables.find({ likes: { $gte: 50 } });
+
+// Not equals (!=)
+db.tables.find({ likes: { $ne: 50 } });
+
+// AND
+db.tables.find({
+  $and: [
+    { author: "Paulo Coelho" },
+    { title: "The Alchemist" }
+  ]
+});
+
+// OR
+db.tables.find({
+  $or: [
+    { author: "Paulo Coelho" },
+    { genre: "fantasy" }
+  ]
+});
+
+// AND + OR together (example)
+db.furniture.find({
+  color: "Brown",
+  $or: [
+    { name: "Table" },
+    { name: "Chair" }
+  ]
+});
+
+
+// =======================================================================
+// UPDATING DOCUMENTS
+// =======================================================================
+
+// Update ONE document
+db.furniture.updateOne(
+  { name: "Table" },           
+  { $set: { color: "Ivory" } }
+);
+
+// Update MANY documents
+db.furniture.updateMany(
+  { color: "Brown" },          
+  { $set: { color: "Dark Brown" } }
+);
+
+
+// =======================================================================
+// DELETING DOCUMENTS
+// =======================================================================
+
+// Delete ONE
+db.furniture.deleteOne({ name: "Chair" });
+
+// Delete MANY
+db.furniture.deleteMany({ dimensions: [12, 18] });
+
+
+// =======================================================================
+// DROPPING COLLECTION & DATABASE
+// =======================================================================
+
+// Drop collection
+db.furniture.drop();
+
+// Drop database
+db.dropDatabase();
+
+
+// =======================================================================
+// SCHEMA DESIGN RULES (IMPORTANT THEORY)
+// =======================================================================
+// - Embed documents used together (avoid joins).
+// - Duplicate small data for faster reads.
+// - Optimize for most frequent queries.
+// - Pre-aggregate heavy computations.
+// - Group related fields together.
+// - Schema in MongoDB is flexible and dynamic.
+
+
+// =======================================================================
+// ADVANCED QUERIES (COUNT, SORT, LIMIT, AGGREGATE, REGEX, TEXT SEARCH)
+// =======================================================================
+
+// -------------------------------
+// COUNT DOCUMENTS
+// -------------------------------
+db.books.countDocuments();
+db.books.countDocuments({ publication_year: { $gt: 2000 } });
+
+
+// -------------------------------
+// SORTING
+// -------------------------------
+db.books.find().sort({ publication_year: 1 });   // ASC
+db.books.find().sort({ publication_year: -1 });  // DESC
+db.books.find().sort({ publication_year: -1, title: 1 });
+
+
+// -------------------------------
+// LIMIT & SKIP (PAGINATION)
+// -------------------------------
+db.books.find().limit(5);
+db.books.find().skip(3);
+db.books.find().skip(5).limit(5);   // Page 2 (5 per page)
+
+
+// -------------------------------
+// AGGREGATION PIPELINE
+// -------------------------------
+
+// Average publication year
+db.books.aggregate([
+  { $group: { _id: null, avgPublicationYear: { $avg: "$publication_year" } } }
+]);
+
+// Count books per genre
+db.books.aggregate([
+  { $group: { _id: "$genre", count: { $sum: 1 } } }
+]);
+
+// Sort genres by count
+db.books.aggregate([
+  { $group: { _id: "$genre", count: { $sum: 1 } } },
+  { $sort: { count: -1 } }
+]);
+
+
+// -------------------------------
+// PROJECTION (SELECT SPECIFIC FIELDS)
+// -------------------------------
+db.books.find({}, { title: 1, author: 1, _id: 0 });
+db.books.find({}, { ISBN: 0 });
+
+
+// -------------------------------
+// TEXT SEARCH
+// -------------------------------
+db.books.createIndex({ title: "text", author: "text" });
+db.books.find({ $text: { $search: "Road" } });
+
+
+// -------------------------------
+// REGEX SEARCH
+// -------------------------------
+db.books.find({ title: { $regex: "^The", $options: "i" } });
+db.books.find({ author: { $regex: "Lee$", $options: "i" } });
+
+
+// -------------------------------
+// INCREMENT / DECREMENT
+// -------------------------------
+db.books.updateMany({}, { $inc: { rating: 1 } });
+db.books.updateOne({ title: "1984" }, { $inc: { publication_year: -5 } });
+
+
+// -------------------------------
+// FIND ONE AND UPDATE / DELETE
+// -------------------------------
+db.books.findOneAndUpdate(
+  { title: "The Great Gatsby" },
+  { $set: { genre: "Classic" } },
+  { returnNewDocument: true }
+);
+
+db.books.findOneAndDelete({ title: "The Catcher in the Rye" });
+
+// -------------------------------
+// RENAMING A COLUMN
+// -------------------------------
+db.students.renameCollection("student");
+
+// =======================================================================
+// FULL LAB TASK SOLUTION (COMPLETE WITH COMMENTS)
+// =======================================================================
+
+// -------------------------------
+// 1 — Create Database
+// -------------------------------
+use SchoolDB;
+
+// -------------------------------
+// 2 — Create Collections
+// -------------------------------
+db.createCollection("Students");
+db.createCollection("Courses");
+
+// -------------------------------
+// 3 — Insert Students
+// -------------------------------
+db.Students.insertMany([
+  { name: "Alice", age: 21, math: 90, science: 88 },
+  { name: "Bob", age: 22, math: 78, science: 70 },
+  { name: "Charlie", age: 23, math: 85, science: 92 },
+  { name: "Daisy", age: 20, math: 72, science: 60 }
+]);
+
+// -------------------------------
+// 4 — Insert Courses
+// -------------------------------
+db.Courses.insertMany([
+  { course: "Math101", instructor: "Dr. Smith", studentsEnrolled: [1,2] },
+  { course: "Sci201", instructor: "Dr. Adams", studentsEnrolled: [3] },
+  { course: "Eng301", instructor: "Dr. Brown", studentsEnrolled: [2,3] }
+]);
+
+// -------------------------------
+// 5 — findOne Queries
+// -------------------------------
+db.Students.findOne({ math: { $gte: 85 }, age: { $lt: 22 } });
+db.Courses.findOne({ studentsEnrolled: 3, instructor: "Dr. Adams" });
+
+// -------------------------------
+// 6 — find Queries
+// -------------------------------
+db.Students.find({
+  math: { $gte: 80 },
+  science: { $lt: 90 }
+});
+
+db.Students.find({
+  $or: [
+    { age: { $lt: 23 } },
+    { math: { $gte: 85 } }
+  ]
+});
+
+db.Students.find({
+  science: { $gte: 80 },
+  $or: [
+    { math: { $lt: 75 } },
+    { age: { $gt: 22 } }
+  ]
+});
+
+// -------------------------------
+// 7 — updateOne
+// -------------------------------
+db.Students.updateOne(
+  { name: "Bob", math: { $gte: 75 } },
+  { $inc: { science: 1 } }
+);
+
+// -------------------------------
+// 8 — updateMany
+// -------------------------------
+db.Students.updateMany(
+  { science: { $lt: 80 }, age: { $gt: 22 } },
+  { $inc: { math: 5 } }
+);
+
+// -------------------------------
+// 9 — deleteOne
+// -------------------------------
+db.Students.deleteOne({
+  name: "Daisy",
+  science: { $lt: 80 }
+});
+
+// -------------------------------
+// 10 — deleteMany
+// -------------------------------
+db.Courses.deleteMany({
+  $or: [
+    { studentsEnrolled: 2 },
+    { instructor: "Dr. Smith" }
+  ]
+});
+
+// -------------------------------
+// 11 — Drop Collections
+// -------------------------------
+db.Students.drop();
+db.Courses.drop();
+
+// -------------------------------
+// 12 — Drop Database
+// -------------------------------
+db.dropDatabase();
+
+
+// =======================================================================
+// END OF FULL LAB-11 MASTER FILE
+// =======================================================================
+
+
+--TRIGGERS:
+--TRIGGERS
+--DML
+--skeleton trigger- COMPOUND TRIGGER
+CREATE OR REPLACE TRIGGER t_compound
+FOR INSERT OR UPDATE OR DELETE ON mytable
+COMPOUND TRIGGER
+  -- declarations
+  BEFORE STATEMENT IS BEGIN NULL; END BEFORE STATEMENT;
+  BEFORE EACH ROW IS BEGIN NULL; END BEFORE EACH ROW;
+  AFTER EACH ROW IS BEGIN NULL; END AFTER EACH ROW;
+  AFTER STATEMENT IS BEGIN NULL; END AFTER STATEMENT;
+END t_compound;
+/
+
+-- BEFORE INSERT TRIGGER
+-- Fires for EACH ROW before an insert is executed on superheroes
+CREATE OR REPLACE TRIGGER bi_superheroes
+BEFORE INSERT ON superheroes
+FOR EACH ROW
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('You Just Inserted a Row by ' || SYS_CONTEXT('USERENV','CURRENT_USER'));
+END;
+/
+-- MULTI-EVENT BEFORE TRIGGER
+-- Fires before INSERT, DELETE or UPDATE on each row
+CREATE OR REPLACE TRIGGER tr_superheroes
+BEFORE INSERT OR DELETE OR UPDATE ON superheroes
+FOR EACH ROW
+BEGIN
+  IF INSERTING THEN
+    DBMS_OUTPUT.PUT_LINE('One line inserted');
+  ELSIF DELETING THEN
+    DBMS_OUTPUT.PUT_LINE('One line deleted');
+  ELSIF UPDATING THEN
+    DBMS_OUTPUT.PUT_LINE('One line updated');
+  END IF;
+END;
+/
+-- AUDIT TABLE
+CREATE TABLE sh_audit (
+  new_name   VARCHAR2(30),
+  old_name   VARCHAR2(30),
+  user_name  VARCHAR2(30),
+  entry_date VARCHAR2(30),
+  operation  VARCHAR2(30)
+);
+
+-- AUDIT TRIGGER
+CREATE OR REPLACE TRIGGER superheroes_audit
+BEFORE INSERT OR DELETE OR UPDATE ON superheroes
+FOR EACH ROW
+BEGIN
+  IF INSERTING THEN
+    INSERT INTO sh_audit
+    VALUES(:NEW.sh_name, NULL, SYS_CONTEXT('USERENV','CURRENT_USER'),
+           TO_CHAR(SYSDATE,'DD/MON/YYYY HH24:MI:SS'), 'INSERT');
+
+  ELSIF DELETING THEN
+    INSERT INTO sh_audit
+    VALUES(NULL, :OLD.sh_name, SYS_CONTEXT('USERENV','CURRENT_USER'),
+           TO_CHAR(SYSDATE,'DD/MON/YYYY HH24:MI:SS'), 'DELETE');
+
+  ELSIF UPDATING THEN
+    INSERT INTO sh_audit
+    VALUES(:NEW.sh_name, :OLD.sh_name, SYS_CONTEXT('USERENV','CURRENT_USER'),
+           TO_CHAR(SYSDATE,'DD/MON/YYYY HH24:MI:SS'), 'UPDATE');
+  END IF;
+END;
+/
+-- BACKUP TABLE
+CREATE TABLE superheroes_backup AS SELECT * FROM superheroes WHERE 1=2;
+
+-- BACKUP TRIGGER
+-- Keeps superheroes_backup table synchronized with superheroes
+CREATE OR REPLACE TRIGGER sh_backup
+BEFORE INSERT OR DELETE OR UPDATE ON superheroes
+FOR EACH ROW
+BEGIN
+  IF INSERTING THEN
+    INSERT INTO superheroes_backup (sh_name)
+    VALUES(:NEW.sh_name);
+
+  ELSIF DELETING THEN
+    DELETE FROM superheroes_backup
+    WHERE sh_name = :OLD.sh_name;
+
+  ELSIF UPDATING THEN
+    UPDATE superheroes_backup
+    SET sh_name = :NEW.sh_name
+    WHERE sh_name = :OLD.sh_name;
+  END IF;
+END;
+/
+
+--Schema level ddl audit trigger
+-- AUDIT TABLE FOR DDL EVENTS
+CREATE TABLE schema_audit (
+  ddl_date       DATE,
+  ddl_user       VARCHAR2(15),
+  object_created VARCHAR2(15),
+  object_name    VARCHAR2(15),
+  ddl_operation  VARCHAR2(15)
+);
+
+-- SCHEMA-LEVEL DDL TRIGGER
+-- Fires AFTER any DDL command in this schema only
+CREATE OR REPLACE TRIGGER hr_audit_tr
+AFTER DDL ON SCHEMA
+BEGIN
+  INSERT INTO schema_audit
+  VALUES (SYSDATE,
+          SYS_CONTEXT('USERENV','CURRENT_USER'),
+          ORA_DICT_OBJ_TYPE,
+          ORA_DICT_OBJ_NAME,
+          ORA_SYSEVENT);
+END;
+/
+-- DATABASE-LEVEL DDL TRIGGER
+-- Fires for ANY DDL on the entire database (requires DBA privilege)
+CREATE OR REPLACE TRIGGER db_audit_tr
+AFTER DDL ON DATABASE
+BEGIN
+  INSERT INTO schema_audit
+  VALUES (SYSDATE,
+          SYS_CONTEXT('USERENV','CURRENT_USER'),
+          ORA_DICT_OBJ_TYPE,
+          ORA_DICT_OBJ_NAME,
+          ORA_SYSEVENT);
+END;
+/
+--system/database triggers
+-- TABLE TO RECORD LOGON/LOGOFF
+CREATE TABLE hr_evnt_audit (
+  event_type  VARCHAR2(30),
+  logon_date  DATE,
+  logon_time  VARCHAR2(15),
+  logoff_date DATE,
+  logoff_time VARCHAR2(15)
+);
+
+-- SCHEMA-LEVEL LOGON TRIGGER
+CREATE OR REPLACE TRIGGER hr_logon_audit
+AFTER LOGON ON SCHEMA
+BEGIN
+  INSERT INTO hr_evnt_audit
+  VALUES (ORA_SYSEVENT, SYSDATE, TO_CHAR(SYSDATE,'HH24:MI:SS'),
+          NULL, NULL);
+END;
+/
+-- SCHEMA-LEVEL LOGOFF TRIGGER
+CREATE OR REPLACE TRIGGER hr_logoff_audit
+BEFORE LOGOFF ON SCHEMA
+BEGIN
+  INSERT INTO hr_evnt_audit
+  VALUES (ORA_SYSEVENT, NULL, NULL,
+          SYSDATE, TO_CHAR(SYSDATE,'HH24:MI:SS'));
+END;
+/
+-- DB-LEVEL LOGON TRIGGER (DBA ONLY)
+CREATE OR REPLACE TRIGGER db_lgon_audit
+AFTER LOGON ON DATABASE
+BEGIN
+  INSERT INTO db_evnt_audit
+  VALUES (USER, ORA_SYSEVENT, SYSDATE, TO_CHAR(SYSDATE,'HH24:MI:SS'), NULL, NULL);
+END;
+/
+-- DB-LEVEL LOGOFF TRIGGER (DBA ONLY)
+CREATE OR REPLACE TRIGGER db_lgoff_audit
+BEFORE LOGOFF ON DATABASE
+BEGIN
+  INSERT INTO db_evnt_audit
+  VALUES (USER, ORA_SYSEVENT, NULL, NULL, SYSDATE, TO_CHAR(SYSDATE,'HH24:MI:SS'));
+END;
+/
+
+--views only trigger
+-- BASE TABLES
+CREATE TABLE trainer (full_name VARCHAR2(20));
+CREATE TABLE subject (subject_name VARCHAR2(20));
+
+-- JOINED VIEW (NOT UPDATABLE)
+CREATE VIEW db_lab_09_view AS
+SELECT t.full_name, s.subject_name
+FROM trainer t, subject s;
+-- INSTEAD OF INSERT TRIGGER ON VIEW
+CREATE OR REPLACE TRIGGER io_insert
+INSTEAD OF INSERT ON db_lab_09_view
+FOR EACH ROW
+BEGIN
+  INSERT INTO trainer (full_name)
+  VALUES (:NEW.full_name);
+
+  INSERT INTO subject (subject_name)
+  VALUES (:NEW.subject_name);
+END;
+/
+-- INSTEAD OF UPDATE TRIGGER ON VIEW
+CREATE OR REPLACE TRIGGER io_update
+INSTEAD OF UPDATE ON db_lab_09_view
+FOR EACH ROW
+BEGIN
+  UPDATE trainer
+  SET full_name = :NEW.full_name
+  WHERE full_name = :OLD.full_name;
+
+  UPDATE subject
+  SET subject_name = :NEW.subject_name
+  WHERE subject_name = :OLD.subject_name;
+END;
+/
+-- INSTEAD OF DELETE TRIGGER ON VIEW
+CREATE OR REPLACE TRIGGER io_delete
+INSTEAD OF DELETE ON db_lab_09_view
+FOR EACH ROW
+BEGIN
+  DELETE FROM trainer WHERE full_name = :OLD.full_name;
+  DELETE FROM subject WHERE subject_name = :OLD.subject_name;
+END;
+/
+
+
+-- more on triggers:
+
+select * from student;
+--before insert 
+create or replace trigger insert_data
+before insert on student
+for each row 
+begin
+if :new.faculty_id IS  NULL
+THEN 
+:new.faculty_id := 1 ;
+end if;
+end;
+/
+select * from student;
+insert into student (student_id,student_name)values(112,'Kinza');
+alter table student add (h_pay int , y_pay int);
+
+-- before update
+create or replace trigger update_salary
+before update ON student
+for each row
+declare 
+begin
+:new.y_pay := :new.h_pay*1920;
+end;
+/
+update student set h_pay = 250 where student_id = 102 ;
+
+set serveroutput on;
+-- before delete 
+create or  replace trigger prevent_Record
+before delete on student 
+for each row
+begin
+IF :OLD.student_name = 'sana' then
+RAISE_APPLICATION_ERROR(-20001, 'Cannot delete record: student_name is sana!');
+end if;
+end;
+/
+DELETE FROM student
+WHERE student_name = 'sana';
+
+
+
+-- after insert
+create table student_logs(
+student_id int ,
+student_name varchar(20),
+inserted_by varchar(20),
+inserted_on  date 
+);
+
+create or replace trigger after_ins
+after insert on student for each row
+begin
+insert into student_logs(student_id,student_name,inserted_by,inserted_on) values
+(:NEW.student_id ,:NEW.student_name,SYS_CONTEXT('USERENV','SESSION_USER'),SYSDATE);
+end;
+/
+
+
+
+
+SELECT * FROM STUDENT_LOGS;
+
+drop table superheroes;
+create table HELLO(
+h_name varchar(20)
+);
+-- 
+create or replace trigger prevent_table
+before drop on database
+begin
+RAISE_APPLICATION_ERROR (
+      num => -20000,
+      msg => 'Cannot drop object');
+  END;
+/
+
+--ddl trigger 
+
+CREATE table schema_audit
+( 
+ddl_date DATE, 
+ddl_user VARCHAR2(15),
+object_created VARCHAR2(15),
+object_name VARCHAR2(15),
+ddl_operation VARCHAR2(15)
+);
+select * from schema_audit;
+
+set serveroutput on;
+CREATE OR REPLACE TRIGGER hr_audit_tr
+AFTER DDL ON SCHEMA
+BEGIN
+INSERT INTO schema_audit VALUES ( sysdate,
+sys_context('USERENV','CURRENT_USER'), ora_dict_obj_type, ora_dict_obj_name,
+ora_sysevent);
+END;
+/
+
+create table ddl2_check(
+h_name varchar(20)
+);
+drop table ddl2_check;
+
+-- more on pl/sql
+set serveroutput on ;
+-- loop
+    declare 
+    begin
+    for user_record in  (select first_name , salary , hire_date from employees where department_id = 80)
+    loop
+    dbms_output.put_line('user name is ' || user_record.first_name || ' salary is ' || user_record.salary
+    || ' and hire date is ' || user_record.hire_date);
+    end loop;
+    end;
+    /
+-- view 
+    create view select_data as 
+    select first_name , job_title , department_name from employees
+    join departments
+    on employees.DEPARTMENT_ID = departments.DEPARTMENT_ID
+    join
+    jobs
+    on
+    employees.job_id = jobs.job_id;
+    /
+    select * from select_data;
+    GRANT CREATE MATERIALIZED VIEW TO HR;
+
+CREATE MATERIALIZED VIEW emp_mv
+REFRESH FAST ON COMMIT
+AS
+SELECT department_id, AVG(salary) AS avg_salary
+FROM employees
+GROUP BY department_id;
+
+
+
+-- function
+create function calculateSalary (dept_id int)
+return number 
+is 
+total_salary int := 0 ;
+Begin 
+select sum(salary) into total_salary from employees where department_id = dept_id ;
+return total_salary ;
+end;
+/
+select  calculateSalary(80) from dual;
+-- object type start
+create  or replace type employees_type as object (
+emp_id number ,
+emp_name varchar(20),
+hire_date date ,
+member function year_of_service return number
+)
+/
+create or replace type body employees_type as 
+member function year_of_service return number is 
+begin
+return trunc(MONTHS_BETWEEN(sysdate,hire_date)/12);
+end;
+end;
+/
+-- object type end
+-- we create table for object storage in database
+CREATE TABLE employees_data OF employees_type (
+    PRIMARY KEY (emp_id)
+);
+insert into employees_data values (employees_type(3, 'Aqsa',DATE '2023-8-13'));
+insert into employees_data values (employees_type(4, 'Amna',DATE '2024-01-13'));
+
+
+SELECT e.emp_id, e.emp_name, e.hire_date
+FROM employees_data e;
+SELECT * FROM EMPLOYEES_DATA;
+
+SELECT e.emp_name,
+       e.year_of_service() AS years_with_company
+FROM EMPLOYEES_DATA e;
+
+-- we can use object type without table in just pl/sql like temporary variable logic
+DECLARE
+    emp employees_type;  -- variable of object type
+BEGIN
+    emp := employees_type(101, 'Ali Khan', DATE '2018-03-10');
+
+    DBMS_OUTPUT.PUT_LINE('Name: ' || emp.emp_name);
+    DBMS_OUTPUT.PUT_LINE('Years of Service: ' || emp.year_of_service());
+END;
+/
+
+-- procedure without parameters
+create or replace  procedure select_all
+as
+begin
+for c in(select * from employees)
+loop
+DBMS_OUTPUT.PUT_LINE('NAME IS '|| C.first_name );
+DBMS_OUTPUT.PUT_LINE('NAME IS '|| C.salary );
+end loop;
+end;
+/
+execute select_all;
+
+create or replace procedure insert_data(e_id  int , e_name in varchar2,hire_date date)
+as
+user_exist number ;
+begin
+ select count(*)  into user_exist from employees_data where emp_id = e_id;
+ if user_exist = 0 then 
+ insert into employees_data (emp_id ,emp_name , hire_date ) values (e_id , e_name , hire_date);
+DBMS_OUTPUT.PUT_LINE('Employee ' || e_id || ' ' || e_name || ' inserted successfully.');
+else 
+DBMS_OUTPUT.PUT_LINE('Error ' || e_id ||  ' already exist.');
+end if;
+end;
+/
+
+begin
+ insert_data(e_id => 6, e_name => 'RAFAY', hire_date => DATE '2023-8-12');
+end;
+/
+
+-- CURSOR, A cursor is a temporary pointer that allows you to process query results row by row in PL/SQL.
+-- cursor lifecycle
+-- Declare – Define the cursor with a SELECT query.
+-- Open – Execute the query and store result rows.
+-- Fetch – Retrieve each row one by one.
+-- Close – Release memory.
+DECLARE
+  CURSOR emp_cursor IS
+    SELECT first_name, salary FROM employees WHERE department_id = 80;
+
+  v_name employees.first_name%TYPE;
+  v_salary employees.salary%TYPE;
+BEGIN
+  OPEN emp_cursor;  -- Step 1: Open the cursor this executes the SELECT query
+  -- inside the cursor and stores the result set in memory
+  LOOP
+    FETCH emp_cursor INTO v_name, v_salary;  -- Step 2: Fetch each row
+    EXIT WHEN emp_cursor%NOTFOUND;           -- Step 3: Exit when no more rows
+    -- %NOTFOUND is a cursor attribute that becomes TRUE after the last row is fetched.
+    DBMS_OUTPUT.PUT_LINE(v_name || ' earns ' || v_salary);
+  END LOOP;
+  CLOSE emp_cursor;         -- Step 4: Close the cursor
+END;
+
+
+
+
+
+-- past paper 
+/* ===========================================================
+   Q1 – SQL QUERIES
+   =========================================================== */
+
+---------------------------------------------------------------
+-- 1. Find employees who earn more than the average salary
+--    of all employees hired in the same year.
+---------------------------------------------------------------
+SELECT e.employee_id, e.first_name, e.salary, e.hire_date
+FROM employees e
+WHERE e.salary >
+      ( SELECT AVG(salary)
+        FROM employees
+        WHERE EXTRACT(YEAR FROM hire_date) =
+              EXTRACT(YEAR FROM e.hire_date) );
+
+
+---------------------------------------------------------------
+-- 2. List employees with NO job history, but their salary is
+--    less than MIN salary of employees who HAVE job history.
+---------------------------------------------------------------
+SELECT e.employee_id, e.first_name, e.salary
+FROM employees e
+WHERE NOT EXISTS (
+        SELECT 1 FROM job_history j
+        WHERE j.employee_id = e.employee_id
+      )
+AND e.salary <
+      ( SELECT MIN(e2.salary)
+        FROM employees e2
+        WHERE EXISTS (
+            SELECT 1 FROM job_history j2
+            WHERE j2.employee_id = e2.employee_id
+        ) );
+
+
+---------------------------------------------------------------
+-- 3. Show employee name, job, salary, commission + job avg commission.
+--    Only show employees whose commission > avg commission of same job.
+---------------------------------------------------------------
+SELECT e.first_name, e.job_id, e.salary, e.commission_pct,
+       ( SELECT AVG(e2.commission_pct)
+         FROM employees e2
+         WHERE e2.job_id = e.job_id ) AS job_avg_commission
+FROM employees e
+WHERE e.commission_pct IS NOT NULL
+AND e.commission_pct >
+    ( SELECT AVG(e2.commission_pct)
+      FROM employees e2
+      WHERE e2.job_id = e.job_id );
+
+
+---------------------------------------------------------------
+-- 4. List employees hired in the year where the department
+--    hired the MOST employees.
+---------------------------------------------------------------
+WITH dept_hire_counts AS (
+    SELECT department_id,
+           COUNT(*) AS hires,
+           EXTRACT(YEAR FROM hire_date) AS hire_year
+    FROM employees
+    GROUP BY department_id, EXTRACT(YEAR FROM hire_date)
+),
+max_year AS (
+    SELECT hire_year
+    FROM dept_hire_counts
+    GROUP BY hire_year
+    ORDER BY SUM(hires) DESC
+    FETCH FIRST 1 ROWS ONLY
+)
+SELECT e.employee_id, e.first_name, e.hire_date, d.department_name,
+       ( SELECT COUNT(*)
+         FROM employees e2
+         WHERE EXTRACT(YEAR FROM e2.hire_date) =
+               EXTRACT(YEAR FROM e.hire_date) ) AS total_hires
+FROM employees e
+JOIN departments d ON e.department_id = d.department_id
+WHERE EXTRACT(YEAR FROM e.hire_date) = (SELECT hire_year FROM max_year);
+
+
+---------------------------------------------------------------
+-- 5. List departments having > 3 employees with salary > 5000.
+---------------------------------------------------------------
+SELECT d.department_name,
+       COUNT(e.employee_id) AS employees_above_5000
+FROM departments d
+JOIN employees e ON d.department_id = e.department_id
+WHERE e.salary > 5000
+GROUP BY d.department_name
+HAVING COUNT(e.employee_id) > 3;
+
+
+
+/* ===========================================================
+   Q2 – TRIGGER (prevent_negative_values)
+   =========================================================== */
+
+CREATE OR REPLACE TRIGGER prevent_negative_values
+BEFORE INSERT OR UPDATE ON products
+FOR EACH ROW
+DECLARE
+BEGIN
+    -----------------------------------------------------------
+    -- 1. Prevent negative / zero price or stock
+    -----------------------------------------------------------
+    IF :NEW.price <= 0 OR :NEW.stock_quantity <= 0 THEN
+        RAISE_APPLICATION_ERROR(-20001,
+        'Product price or product quantity cannot be negative or zero');
+    END IF;
+
+    -----------------------------------------------------------
+    -- 2. Monitor low stock levels (<5)
+    -----------------------------------------------------------
+    IF :NEW.stock_quantity < 5 THEN
+        RAISE_APPLICATION_ERROR(-20002,
+        'The product is going out of stock');
+    END IF;
+
+    -----------------------------------------------------------
+    -- 3. Restrict stock reduction > 50%
+    -----------------------------------------------------------
+    IF UPDATING THEN
+        IF :NEW.stock_quantity < (:OLD.stock_quantity * 0.5) THEN
+            RAISE_APPLICATION_ERROR(-20003,
+            'Stock reduction exceeds allowed limit (50%)');
+        END IF;
+    END IF;
+
+    -----------------------------------------------------------
+    -- 4. Automatically calculate subtotal
+    -----------------------------------------------------------
+    :NEW.subtotal := :NEW.price * :NEW.stock_quantity;
+
+    -----------------------------------------------------------
+    -- 5. Auto-assign audit fields
+    -----------------------------------------------------------
+    IF INSERTING THEN
+        :NEW.created_by := USER;
+    ELSIF UPDATING THEN
+        :NEW.updated_by := USER;
+    END IF;
+
+    -----------------------------------------------------------
+    -- 6. Update last_updated field
+    -----------------------------------------------------------
+    :NEW.last_updated := SYSDATE;
+
+END;
+/
+
+
+
+
+/* ===========================================================
+   Q2b – TRANSACTION (Pharmacy Medicine Order System)
+   =========================================================== */
+
+-- Insert order + update medicine stock + insert order items
+-- All done inside one transaction
+
+DECLARE
+    v_order_id  NUMBER;
+BEGIN
+    -----------------------------------------------------------
+    -- Create a new order
+    -----------------------------------------------------------
+    INSERT INTO orders(order_id, cust_id)
+    VALUES (orders_seq.NEXTVAL, 12)
+    RETURNING order_id INTO v_order_id;
+
+    -----------------------------------------------------------
+    -- Insert medicine item
+    -----------------------------------------------------------
+    INSERT INTO order_items(item_id, order_id, med_id, qty)
+    VALUES (order_items_seq.NEXTVAL, v_order_id, 5, 3);
+
+    -----------------------------------------------------------
+    -- Deduct stock from medicines table
+    -----------------------------------------------------------
+    UPDATE medicines
+    SET stock = stock - 3
+    WHERE med_id = 5;
+
+    -----------------------------------------------------------
+    -- Check stock not negative
+    -----------------------------------------------------------
+    IF (SELECT stock FROM medicines WHERE med_id=5) < 0 THEN
+        ROLLBACK;
+        RAISE_APPLICATION_ERROR(-20005, 'Insufficient stock!');
+    END IF;
+
+    COMMIT;
+
+END;
+/
+
+
+
+/* ===========================================================
+   Q3 – PL/SQL Using OBJECT TYPES (Order Billing System)
+   =========================================================== */
+
+---------------------------------------------------------------
+-- 1. Create Object Type ORDER_ITEM
+---------------------------------------------------------------
+CREATE OR REPLACE TYPE order_item AS OBJECT(
+    item_name      VARCHAR2(50),
+    quantity       NUMBER,
+    price          NUMBER,
+
+    MEMBER FUNCTION total_cost RETURN NUMBER
+);
+/
+
+---------------------------------------------------------------
+-- 2. Create Object Type BODY with Discount Logic
+---------------------------------------------------------------
+CREATE OR REPLACE TYPE BODY order_item AS
+    MEMBER FUNCTION total_cost RETURN NUMBER IS
+        cost NUMBER;
+    BEGIN
+        cost := quantity * price;
+
+        IF quantity > 5 THEN
+            cost := cost * 0.95;  -- apply 5% discount
+        END IF;
+
+        RETURN cost;
+    END;
+END;
+/
+
+---------------------------------------------------------------
+-- 3. Create Object Table
+---------------------------------------------------------------
+CREATE TABLE order_table OF order_item;
+
+
+---------------------------------------------------------------
+-- 4. PL/SQL Block to print all item totals + highest bill
+---------------------------------------------------------------
+DECLARE
+    CURSOR c IS SELECT VALUE(o) FROM order_table o;
+    v_item   order_item;
+    v_cost   NUMBER;
+    v_max    NUMBER := 0;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Item Bill Details:');
+
+    FOR rec IN c LOOP
+        v_item := rec.VALUE;
+        v_cost := v_item.total_cost;
+
+        DBMS_OUTPUT.PUT_LINE('Item: ' || v_item.item_name ||
+                             '  Final Bill: ' || v_cost);
+
+        IF v_cost > v_max THEN
+            v_max := v_cost;
+        END IF;
+    END LOOP;
+
+    DBMS_OUTPUT.PUT_LINE('--------------------------------------');
+    DBMS_OUTPUT.PUT_LINE('Highest Bill Amount = ' || v_max);
+END;
+/
+
+// =======================================================================
+// MONGODB QUESTION SOLUTION — FULL + SINGLE BLOCK + COMMENTS
+// =======================================================================
+
+// -----------------------------------------------------------------------
+// CREATE DATABASE AND COLLECTIONS
+// -----------------------------------------------------------------------
+use examDB;
+
+// Create collections
+db.createCollection("employees");
+db.createCollection("orders");
+
+// -----------------------------------------------------------------------
+// INSERT SAMPLE EMPLOYEE DOCUMENTS
+// (Add more entries as required in the question)
+// -----------------------------------------------------------------------
+db.employees.insertMany([
+{
+  _id: ObjectId(),
+  name: "John Doe",
+  department: "IT",
+  salary: 75000,
+  lastActive: ISODate("2024-10-05"),
+  bonus: 0
+},
+{
+  _id: ObjectId(),
+  name: "Ali Khan",
+  department: "HR",
+  salary: 90000,
+  lastActive: ISODate("2024-12-01"),
+  bonus: 0
+},
+{
+  _id: ObjectId(),
+  name: "Maryam",
+  department: "HR",
+  salary: 120000,
+  lastActive: ISODate("2024-11-15"),
+  bonus: 5000
+},
+{
+  _id: ObjectId(),
+  name: "Ahmed",
+  department: "Finance",
+  salary: 65000,
+  lastActive: ISODate("2024-10-20"),
+  bonus: 0
+},
+{
+  _id: ObjectId(),
+  name: "Ayesha",
+  department: "HR",
+  salary: 110000,
+  lastActive: ISODate("2024-12-10"),
+  bonus: 0
+}
+]);
+
+// -----------------------------------------------------------------------
+// INSERT SAMPLE ORDERS
+// -----------------------------------------------------------------------
+db.orders.insertMany([
+{
+  _id: ObjectId(),
+  customerId: ObjectId(),
+  customerName: "Ali Khan",
+  email: "ali@example.com",
+  orderDate: ISODate("2024-03-11"),
+  totalAmount: 15000,
+  items: [
+    { product: "Laptop", price: 80000, qty: 1 },
+    { product: "Mouse", price: 2000, qty: 2 }
+  ]
+},
+{
+  _id: ObjectId(),
+  customerId: ObjectId(),
+  customerName: "Maryam",
+  email: "maryam@example.com",
+  orderDate: ISODate("2024-01-12"),
+  totalAmount: 6000,
+  items: [
+    { product: "Keyboard", price: 3000, qty: 1 },
+    { product: "Mouse", price: 2000, qty: 1 }
+  ]
+},
+{
+  _id: ObjectId(),
+  customerId: ObjectId(),
+  customerName: "Ali Khan",
+  email: "ali@example.com",
+  orderDate: ISODate("2024-02-19"),
+  totalAmount: 200000,
+  items: [
+    { product: "PC", price: 200000, qty: 1 }
+  ]
+}
+]);
+
+// =======================================================================
+// ------------------------ SOLVE ALL 10 QUERIES --------------------------
+// =======================================================================
+
+// 1. Find employees who have not received any bonus.
+db.employees.find({ bonus: 0 });
+
+
+// 2. Get top 3 highest-paid employees from HR department.
+db.employees.find({ department: "HR" })
+            .sort({ salary: -1 })
+            .limit(3);
+
+
+// 3. Increase salary by 10% for employees active in last 30 days.
+db.employees.updateMany(
+  { lastActive: { $gte: new Date(Date.now() - 30*24*60*60*1000) } },
+  { $mul: { salary: 1.10 } }
+);
+
+
+// 4. Find total spending per customer (aggregation).
+db.orders.aggregate([
+  { $group: { _id: "$customerName", totalSpent: { $sum: "$totalAmount" } } }
+]);
+
+
+// 5. Identify customers with more than 5 orders.
+db.orders.aggregate([
+  { $group: { _id: "$customerName", orderCount: { $sum: 1 } } },
+  { $match: { orderCount: { $gt: 5 } } }
+]);
+
+
+// 6. Find orders where any item price > 50,000.
+db.orders.find({ "items.price": { $gt: 50000 } });
+
+
+// 7. Increase salary by 10% for employees active in last 30 days (duplicate query).
+db.employees.updateMany(
+  { lastActive: { $gte: new Date(Date.now() - 30*24*60*60*1000) } },
+  { $mul: { salary: 1.10 } }
+);
+
+
+// 8. Most frequently purchased product.
+db.orders.aggregate([
+  { $unwind: "$items" },
+  { $group: { _id: "$items.product", count: { $sum: "$items.qty" } } },
+  { $sort: { count: -1 } },
+  { $limit: 1 }
+]);
+
+
+// 9. Find employees whose name starts with A or M.
+db.employees.find({
+  name: { $regex: /^[AM]/i }
+});
+
+
+// 10. Total revenue of each year.
+db.orders.aggregate([
+  { $group: {
+      _id: { year: { $year: "$orderDate" } },
+      yearRevenue: { $sum: "$totalAmount" }
+  }}
+]);
+
+// =======================================================================
+// END OF FULL SOLUTION BLOCK
+// =======================================================================
